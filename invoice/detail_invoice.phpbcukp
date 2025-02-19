@@ -1,0 +1,191 @@
+<?php
+include 'config/config_db.php';
+
+if(isset($_GET['id'])){
+    $invoice_id = $_GET['id'];
+    
+    // Ambil data header invoice
+    $query_invoice = "SELECT * FROM invoice WHERE id = $invoice_id";
+    $result_invoice = $conn->query($query_invoice);
+    $invoice = $result_invoice->fetch_assoc();
+    
+    // Ambil data detail invoice
+    $query_details = "SELECT * FROM invoice_detail WHERE invoice_id = $invoice_id";
+    $result_details = $conn->query($query_details);
+    
+    // Hitung total pembayaran
+    $total = 0;
+    $details = [];
+    while($row = $result_details->fetch_assoc()){
+        $total += $row['harga'];
+        $details[] = $row;
+    }
+} else {
+    header("Location: index.php");
+    exit;
+}
+?>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- Meta viewport untuk responsivitas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Detail Invoice Travel</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+  <!-- Sertakan html2canvas untuk fungsi simpan ke gambar -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    /* Styling untuk tampilan invoice */
+    .invoice-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #000;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .invoice-footer {
+      border-top: 2px solid #000;
+      padding-top: 10px;
+      margin-top: 20px;
+      text-align: center;
+    }
+    .invoice-container {
+      background: #fff;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+<div class="container mt-5">
+  <!-- Container invoice yang akan dijadikan gambar -->
+  <div id="invoice-content" class="invoice-container">
+    <!-- Header Invoice -->
+    <div class="invoice-header">
+      <div>
+        <h5>Invoice: <?php echo $invoice['no_invoice']; ?></h5>
+        <p>Status: <?php echo $invoice['status']; ?></p>
+      </div>
+      <div>
+        <h5><?php echo $invoice['nama']; ?></h5>
+        <p><?php echo $invoice['alamat_rumah']; ?></p>
+      </div>
+    </div>
+    
+    <!-- Tombol untuk menambah data detail invoice -->
+<!-- Tombol untuk menambah data detail invoice, diberi id "no-download" agar tidak ikut didownload -->
+<div class="mb-3" id="no-download">
+  <a href="data_tabel.php?invoice_id=<?php echo $invoice_id; ?>" class="btn btn-primary">Tambah Data Tabel</a>
+</div>
+
+    
+<!-- Body: Data Detail Invoice -->
+<div class="table-responsive">
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Deskripsi</th>
+        <th>Jarak</th>
+        <th>Tanggal</th>
+        <th>Harga</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php 
+        if(!empty($details)){
+          foreach($details as $detail){
+      ?>
+      <tr>
+        <td><?php echo $detail['deskripsi']; ?></td>
+        <td><?php echo $detail['jarak']; ?></td>
+        <td><?php echo $detail['tanggal']; ?></td>
+        <td><?php echo number_format($detail['harga'], 2); ?></td>
+        <td>
+          <a href="edit_tabel.php?id=<?php echo $detail['id']; ?>&invoice_id=<?php echo $invoice_id; ?>" class="btn btn-sm btn-warning">Edit</a>
+          <a href="hapus_tabel.php?id=<?php echo $detail['id']; ?>&invoice_id=<?php echo $invoice_id; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin hapus data detail ini?')">Hapus</a>
+        </td>
+      </tr>
+      <?php 
+          }
+        } else {
+          echo '<tr><td colspan="5" class="text-center">Belum ada data detail</td></tr>';
+        }
+      ?>
+    </tbody>
+  </table>
+</div>
+
+    
+    <!-- Footer Invoice -->
+    <div class="invoice-footer">
+      <h5>Total Pembayaran: <?php echo number_format($total, 2); ?></h5>
+      <p>Terima kasih telah menggunakan jasa travel kami.</p>
+    </div>
+  </div>
+  
+  <!-- Tombol Aksi -->
+  <div class="mt-3">
+    <button class="btn btn-primary" onclick="editInvoice()">Edit</button>
+    <button class="btn btn-danger" onclick="hapusInvoice()">Hapus</button>
+    <a href="index.php" class="btn btn-secondary">Kembali</a>
+    <button class="btn btn-success" onclick="downloadImage()">Simpan ke dalam Gambar</button>
+  </div>
+</div>
+
+<script>
+// Fungsi download tampilan invoice sebagai gambar
+function downloadImage(){
+    html2canvas(document.querySelector("#invoice-content")).then(canvas => {
+        var link = document.createElement('a');
+        link.href = canvas.toDataURL();
+        link.download = 'invoice_<?php echo $invoice['no_invoice']; ?>.png';
+        link.click();
+    });
+}
+
+// Fungsi edit invoice (implementasi dapat disesuaikan)
+function editInvoice(){
+    window.location.href = "edit_invoice.php?id=<?php echo $invoice_id; ?>";
+}
+
+// Fungsi hapus invoice (implementasi dapat disesuaikan)
+function hapusInvoice(){
+    if(confirm('Apakah Anda yakin ingin menghapus invoice ini?')){
+        window.location.href = "hapus_invoice.php?id=<?php echo $invoice_id; ?>";
+    }
+}
+
+// Fungsi download tampilan invoice sebagai gambar
+function downloadImage(){
+    // Sembunyikan elemen dengan id "no-download"
+    var noDownloadElement = document.getElementById('no-download');
+    noDownloadElement.style.display = 'none';
+    
+    html2canvas(document.querySelector("#invoice-content")).then(canvas => {
+        var link = document.createElement('a');
+        link.href = canvas.toDataURL();
+        link.download = 'invoice_<?php echo $invoice['no_invoice']; ?>.png';
+        link.click();
+        // Kembalikan tampilan tombol setelah proses download selesai
+        noDownloadElement.style.display = 'block';
+    });
+}
+
+// Fungsi edit invoice (implementasi dapat disesuaikan)
+function editInvoice(){
+    window.location.href = "edit_invoice.php?id=<?php echo $invoice_id; ?>";
+}
+
+// Fungsi hapus invoice (implementasi dapat disesuaikan)
+function hapusInvoice(){
+    if(confirm('Apakah Anda yakin ingin menghapus invoice ini?')){
+        window.location.href = "hapus_invoice.php?id=<?php echo $invoice_id; ?>";
+    }
+}
+
+
+</script>
+</body>
+</html>
